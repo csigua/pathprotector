@@ -30,16 +30,13 @@ class Game extends Phaser.Scene {
         this.Spacebar = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
         // ENEMY PATH
-        this.points = [
-            192,-50,
-            192,768,
-            640,768,
-            640,192,
-            1088,192,
-            1088,1000,
-        ];
-        this.enemyPath = new Phaser.Curves.Line(this.points);
-
+        this.enemyPath = new Phaser.Curves.Path(192,-50);
+        this.enemyPath.lineTo(192,768);
+        this.enemyPath.lineTo(640,768);
+        this.enemyPath.lineTo(640,192);
+        this.enemyPath.lineTo(1088,192);
+        this.enemyPath.lineTo(1088,1000);
+            
         // enemy groups
         // this.enemyGroup = this.add.group({
         //     defaultKey: "enemy",
@@ -68,7 +65,7 @@ class Game extends Phaser.Scene {
 
             if (x <= 1280) {
                 this.pickedTile = this.map.getTileAtWorldXY(x, y);
-                console.log(this.pickedTile);
+                // console.log(this.pickedTile);
                 let placeable = this.pickedTileset.getTileProperties(this.pickedTile.index).placeable;
                 if (placeable && this.clickedTileIndex != this.pickedTile) {
                     let squaredTile = this.map.filterTiles(tile => tile.index === 43);
@@ -110,7 +107,7 @@ class Game extends Phaser.Scene {
             this.rangeCircle.y = this.tileY;
         });
         buyButton.on("pointerup", () => {
-            buyButton.fillColor = pressColor;
+            buyButton.fillColor = baseColor;
             // buyButton.setStrokeStyle(8, 0xFF0000);
             // create/buy tower
             this.allowPlace = true;
@@ -128,7 +125,7 @@ class Game extends Phaser.Scene {
             }
         });
         buyButton.on("pointerdown", () => {
-            buyButton.fillColor = baseColor;
+            buyButton.fillColor = pressColor;
             // buyButton.setStrokeStyle(2, 0x000000);
         });
         buyButton.on("pointerout", () => {
@@ -136,8 +133,8 @@ class Game extends Phaser.Scene {
             this.rangeCircle.visible = false;
         });
 
-        // enemy types [texture, speed]
-        const PLANE = [271, 4];
+        // enemy types [texture, spawn speed]
+        const PLANE = [271, 30];
 
         // waves [enemy type, number of enemy]
         let WAVE1 = [
@@ -155,38 +152,70 @@ class Game extends Phaser.Scene {
             waveButton.fillColor = hoverColor;
         });
         waveButton.on('pointerup', () => {
+            waveButton.fillColor = baseColor;
             if (!this.waveOngoing) {
-                this.waveOngoing = true;
-                waveButton.fillColor = baseColor;
                 // start wave
                 // load enemies
                 let wave = this.waves[this.waveCounter];
-                console.log(wave[1]);
                 for (const group of wave) {
-                    for (let spawns = 0; spawns < group[1]; spawns++) {
-                        // this.enemyGroup.create(
-                        //     this.points[0].x,
-                        //     this.points[0].y,
-                        //     "tilemap_sheet",
-                        //     wave[0][0] // texture
-                        // );
-                        let newEnemy = this.add.follower(this.enemyPath, this.points[0].x, this.points[0].y, "tilemap_sheet", group[0][0])
+                    for (let spawns = 0; spawns < group[1]; spawns++) { //group[1] is the number of enemies that will spawn
+                        let newEnemy = this.add.follower(this.enemyPath, this.enemyPath.startPoint.x, this.enemyPath.startPoint.y, "tilemap_sheet", group[0][0])
                         newEnemy.visible = false;
                         this.enemyArray.push(newEnemy);
                     }
                 }
+                this.waveOngoing = true;
             }
         });
         waveButton.on('pointerdown', () => {
             waveButton.fillColor = pressColor;
         });
+        waveButton.on('pointerout', () => {
+            waveButton.fillColor = baseColor;
+        })
 
         // counters
-        this.enemySpawnCounter = -1;
+        this.enemySpawnCounter = 0;
     }
 
     update(time, delta) {
         this.enemySpawnCounter--;
+        
+        // check if enemies go offscreen
+        for (const enemy of this.enemyArray) {
+            if (enemy.y > 950) {
+                this.enemyArray = this.enemyArray.filter(x => x !== enemy);
+                enemy.destroy();
+                // TODO: remove a life from the player
+            }
+        }
+
+        console.log(this.enemyArray.length);
+
+        if (this.enemyArray.length === 0) {
+            this.waveOngoing = false;
+        }
+
+        // ongoing wave
+        if (this.waveOngoing && this.enemySpawnCounter < 0) {
+            for (const enemy of this.enemyArray) {
+                if (!enemy.visible) {
+                    enemy.startFollow({
+                        from: 0,
+                        to: 1,
+                        delay: 0,
+                        duration: 5000,
+                        ease: 'Linear',
+                        repeat: -1,
+                        yoyo: false,
+                        rotateToPath: true
+                    });
+                    enemy.visible = true;
+                }
+                this.enemySpawnCounter = 30;
+                break;
+            }
+        }
     }
 
     collides(a, b) 
