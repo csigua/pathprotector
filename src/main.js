@@ -19,9 +19,9 @@ let config = {
     render: {
         pixelArt: true  // prevent pixel art from getting blurred when scaled
     },
-    width: 1280,
+    width: 1500,
     height: 960,
-    backgroundColor: '#00807F',
+    backgroundColor: '#121212',
     scene: [Load, Game],
     fps: { forceSetTimeOut: true, target: 144 }
 }
