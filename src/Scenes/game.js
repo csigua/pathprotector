@@ -46,16 +46,106 @@ class Game extends Phaser.Scene {
             defaultKey: "tower",
             maxSize: 100
         });
+
+        // turret class
+        var Turret = new Phaser.Class({
+            Extends: Phaser.GameObjects.Image,
+            initialize:
+            function Turret(scene) {
+                this.scene = scene;
+                Phaser.GameObjects.Image.call(this, scene, 0, 0, "tilemap_sheet", 249);
+                this.shotTimer = 0;
+            },
+            place: function (x,y) {
+                this.setPosition(x,y);
+                this.setActive(true);
+                this.setVisible(true);
+            },
+            search: function () {
+                let target;
+                // search for first enemy
+                for (const enemy of this.scene.enemyArray) {
+                    if (enemy.visible) {
+                        target = enemy;
+                        break;
+                    }
+                }
+                if (target) {
+                    if (target.x > this.x) {
+                        this.rotationVal = Math.atan(((target.y-this.y) / (target.x-this.x))) + Math.PI/2;
+                    }
+                    else {
+                        this.rotationVal = Math.atan(((target.y-this.y) / (target.x-this.x))) + Math.PI * (3/2);   
+                    }
+                    this.setRotation(this.rotationVal);
+                }
+            },
+            fire: function() {
+                let target;
+                // search for first enemy
+                for (const enemy of this.scene.enemyArray) {
+                    if (enemy.visible) {
+                        target = enemy;
+                        break;
+                    }
+                }
+                if (target) {
+                    let angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
+                    let bullet = this.scene.bulletGroup.get();
+                    if (bullet) {
+                        bullet.fire(this.x, this.y, angle);
+                    }
+                }
+            },
+            update: function (time, delta) {
+                if (time > this.shotTimer) {
+                    this.fire();
+                    this.shotTimer = time + 1000;
+                }
+            }
+        });
+
         this.turretGroup = this.add.group({
+            classType: Turret,
             defaultKey: "turret",
-            maxSize: 100
+            maxSize: 100,
+            runChildUpdate: true
+        });
+
+        // bullet class
+        var Bullet = new Phaser.Class({
+            Extends: Phaser.GameObjects.Image,
+            initialize:
+            function Bullet(scene, directionX, directionY) {
+                Phaser.GameObjects.Image.call(this, scene, 0, 0, "tilemap_sheet", 297);
+                this.dx = 0;
+                this.dy = 0;
+                this.speed = Phaser.Math.GetSpeed(2000, 1);
+                this.speedX = directionX * this.speed;
+                this.speedY = directionY * this.speed;
+            },
+            fire: function(x,y,angle) {
+                this.setPosition(x, y);
+                this.active = true;
+                this.visible = true;
+
+                this.setRotation(angle - Math.PI/2);
+                this.dx = Math.cos(angle);
+                this.dy = Math.sin(angle);
+            },
+            update: function(time, delta) {
+                this.x += this.dx * (this.speed * delta);
+                this.y += this.dy * (this.speed * delta);
+            }
         });
 
         // bullet groups
         this.bulletGroup = this.add.group({
+            classType: Bullet,
             defaultKey: "bullet",
-            maxSize: 100
-        })
+            maxSize: 100,
+            runChildUpdate: true
+        });
 
         // mouse movement (inspired by https://phaser.io/examples/v3.85.0/geom/line/view/equals)
         this.clickedTileIndex = 0;
@@ -128,7 +218,10 @@ class Game extends Phaser.Scene {
             if (this.allowPlace) {
                 this.pickedTile.hasTower = true;
                 this.towerGroup.create(this.tileX, this.tileY, "tilemap_sheet", 180);
-                this.turretGroup.create(this.tileX, this.tileY, "tilemap_sheet", 249);
+                let turret = this.turretGroup.get();
+                if (turret) {
+                    turret.place(this.tileX, this.tileY);
+                }
             }
         });
         buyButton.on("pointerdown", () => {
@@ -209,7 +302,7 @@ class Game extends Phaser.Scene {
         // ongoing wave
         if (this.waveOngoing && this.enemySpawnCounter < 0) {
             for (const enemy of this.enemyArray) {
-                if (!enemy.visible) {
+                if (!enemy.visible && enemy.active) {
                     enemy.startFollow({
                         from: 0,
                         to: 1,
@@ -228,27 +321,20 @@ class Game extends Phaser.Scene {
         }
 
         // towers search for enemies (rotation)
-        let target;
-        let x;
-        let y;
-        // search for first enemy
-        for (const enemy of this.enemyArray) {
-            if (enemy.visible) {
-                target = enemy;
-                x = target.x;
-                y = target.y;
-                break;
-            }
+        for (const turret of this.turretGroup.getChildren()) {
+            turret.search();
         }
-        if (target) {
-            for (const turret of this.turretGroup.getChildren()) {
-                if (x > turret.x) {
-                    this.rotationVal = Math.atan(((y-turret.y) / (x-turret.x))) + Math.PI/2;
+
+        // check for collisions between bullets and enemies
+        for (let bullet of this.bulletGroup.getChildren()) {
+            for (let enemy of this.enemyArray) {
+                if (this.collides(enemy, bullet) && bullet.active && enemy.active) {
+                    enemy.visible = false;
+                    enemy.active = false;
+                    bullet.visible = false;
+                    bullet.active = false;
+                    enemy.destroy();
                 }
-                else {
-                    this.rotationVal = Math.atan(((y-turret.y) / (x-turret.x))) + Math.PI * (3/2);   
-                }
-                turret.setRotation(this.rotationVal);
             }
         }
     }
