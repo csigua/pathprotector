@@ -330,10 +330,11 @@ class Game extends Phaser.Scene {
             for (let enemy of this.enemyArray) {
                 if (this.collides(enemy, bullet) && bullet.active && enemy.active) {
                     enemy.visible = false;
-                    enemy.active = false;
+                    enemy.yactive = false;
+                    this.enemyArray = this.enemyArray.filter(item => item !== enemy);
                     bullet.visible = false;
                     bullet.active = false;
-                    enemy.destroy();
+                    console.log(this.enemyArray);
                 }
             }
         }
