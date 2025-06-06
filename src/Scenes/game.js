@@ -39,7 +39,7 @@ class Game extends Phaser.Scene {
         this.enemyArray = [];
 
         //tower constants
-        this.BASIC_SPEED = 70;
+        this.BASIC_SPEED = 50;
 
         // tower groups
         this.towerGroup = this.add.group({
@@ -91,8 +91,9 @@ class Game extends Phaser.Scene {
                 }
                 if (target) {
                     let angle = Phaser.Math.Angle.Between(this.x, this.y, target.x, target.y);
+                    let dist = Phaser.Math.Distance.Between(this.x, this.y, target.x, target.y);
                     let bullet = this.scene.bulletGroup.get();
-                    if (bullet) {
+                    if (bullet && dist < this.scene.towerRange) {
                         bullet.fire(this.x, this.y, angle);
                     }
                 }
@@ -100,7 +101,7 @@ class Game extends Phaser.Scene {
             update: function (time, delta) {
                 if (time > this.shotTimer) {
                     this.fire();
-                    this.shotTimer = time + 1000;
+                    this.shotTimer = time + 50;
                 }
             }
         });
@@ -120,7 +121,7 @@ class Game extends Phaser.Scene {
                 Phaser.GameObjects.Image.call(this, scene, 0, 0, "tilemap_sheet", 297);
                 this.dx = 0;
                 this.dy = 0;
-                this.speed = Phaser.Math.GetSpeed(2000, 1);
+                this.speed = Phaser.Math.GetSpeed(400, 1);
                 this.speedX = directionX * this.speed;
                 this.speedY = directionY * this.speed;
             },
@@ -185,7 +186,7 @@ class Game extends Phaser.Scene {
 
         // range circle
         this.towerRange = 180;
-        this.rangeCircle = this.add.circle(0, 0, this.towerRange);
+        this.rangeCircle = this.add.circle(0, 0, this.towerRange - 30);
         this.rangeCircle.setFillStyle(0x00FFFF, 0.2);
         this.rangeCircle.setStrokeStyle(4, 0xFFFFFF, 0.6);
         this.rangeCircle.visible = false;
