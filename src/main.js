@@ -22,11 +22,11 @@ let config = {
     width: 1500,
     height: 960,
     backgroundColor: '#121212',
-    scene: [Load, Game],
+    scene: [Menu, Load, Game, Lose, Win],
     fps: { forceSetTimeOut: true, target: 144 }
 }
 
 // Global variable to hold sprites
-var my = {sprite: {}};
+var my = {sprite: {}, text: {}, vfx: {}};
 
 const game = new Phaser.Game(config);
